@@ -21,7 +21,7 @@ This script performs the below steps. See next sections for command line options
 
 ## Command Line Options
 - NoRepoUpdate
-					The repository is NOT updated
+  - The repository is NOT updated
 - NoBld
   - The projects do NOT get built, and the minor version is not incremented.
   - Uses the last build version.
