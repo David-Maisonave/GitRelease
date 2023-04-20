@@ -1,5 +1,5 @@
 # GitRelease
-The Release.cmd file builds Visual Studio dotnet solution in multiple platforms, updates the Git repository, and creates a Github package.
+The Release.cmd batch script builds Visual Studio dotnet solution in multiple platforms, updates the Git repository, and creates a Github package.
 
 ## Description
 This script performs the below steps. See next sections for command line options and requirements.
