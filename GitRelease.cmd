@@ -34,7 +34,7 @@ setlocal ENABLEDELAYEDEXPANSION
 :: RelNotes
 ::					Release notes used to create Git release package. Argument should have double quotes.
 ::					Can include batch variables: %ReleaseName%, %MajorVersion%, %MinorVersion%, %DotNetVer%, %ReleaseTitle%, %Identifier%, %ProgramVersion%, %ReleaseTag%, %YEAR%, %MONTH%, %DAY%
-::					Example: Release.cmd RelNotes "%ReleaseName% Version %MajorVersion%.%MinorVersion% build date=%YEAR%-%MONTH%-%DAY%"
+::					Example: GitRelease.cmd RelNotes "%ReleaseName% Version %MajorVersion%.%MinorVersion% build date=%YEAR%-%MONTH%-%DAY%"
 ::					Default is "%ReleaseName%_Ver%MajorVersion%.%MinorVersion%"
 :: RelTitle
 ::					Release title used to create Git release package. Default is "%ReleaseName%_Ver%MajorVersion%.%MinorVersion%"
@@ -47,14 +47,14 @@ setlocal ENABLEDELAYEDEXPANSION
 ::					NoRepoUpdate & NoGitRel & NoIncVer
 :: TestVar
 ::					Only display variable values.
-::					To avoid incrementing version, use this command in conjunction with NoIncVer. Example: Release.cmd TestVar NoIncVer
+::					To avoid incrementing version, use this command in conjunction with NoIncVer. Example: GitRelease.cmd TestVar NoIncVer
 ::
 :: Example Usage:
-::					Release.cmd TestRun
-::					Release.cmd NoRepoUpdate NoGitRel
-::					Release.cmd TestVar NoIncVer
-::					Release.cmd RelNotes "Beta Version %MinorVersion%" RelTitle MediaFileDuplicateFinderApp
-::					Release.cmd RelTitle "Latest of %ReleaseName% Version %MinorVersion%"
+::					GitRelease.cmd TestRun
+::					GitRelease.cmd NoRepoUpdate NoGitRel
+::					GitRelease.cmd TestVar NoIncVer
+::					GitRelease.cmd RelNotes "Beta Version %MinorVersion%" RelTitle MediaFileDuplicateFinderApp
+::					GitRelease.cmd RelTitle "Latest of %ReleaseName% Version %MinorVersion%"
 :: ################################################################################################
 :: Requirements
 :: Git installation: https://git-scm.com/book/en/v2/Getting-Started-Installing-Git
