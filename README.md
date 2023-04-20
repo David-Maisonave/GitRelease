@@ -56,7 +56,7 @@ This script performs the below steps. See next sections for command line options
   - Only display variable values.
   - To avoid incrementing version, use this command in conjunction with NoIncVer. Example: GitRelease.cmd TestVar NoIncVer
 
-- Example Usage:
+### Example Usage:
 					GitRelease.cmd TestRun
 					GitRelease.cmd NoRepoUpdate NoGitRel
 					GitRelease.cmd TestVar NoIncVer
