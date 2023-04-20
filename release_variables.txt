@@ -1,0 +1,12 @@
+Enter solution release name below. Recommend using name with no spaces.
+MediaFileDuplicateFinder 
+MajorVersionEnter desired major version number below. Value must be between 0-9999
+0 
+Enter desired minor version number below. Value must be between 0-9999
+3 
+Enter targeted dotnet version below.
+net7.0 
+Enter release title which can use the following arguments:%ReleaseName%, %MajorVersion%, %MinorVersion%, %DotNetVer%, %ReleaseTitle%, %Identifier%, %ProgramVersion%, %ReleaseTag%, %YEAR%, %MONTH%, %DAY%
+%ReleaseName% Version %MajorVersion%.%MinorVersion%
+Enter release notes which can use same arguments as release title.
+Beta Version %MajorVersion%.%MinorVersion% build date=%YEAR%-%MONTH%-%DAY%; Made improvements to the build script.
