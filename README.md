@@ -1,5 +1,5 @@
 # GitRelease
-The [GitRelease.cmd](https://github.com/David-Maisonave/GitRelease/blob/main/GitRelease.cmd) batch script builds Visual Studio dotnet solution in multiple platforms, updates the Git repository, and creates a Github package. It performs this action from the remote desktop computer, and not server-side.
+The [GitRelease.cmd](https://github.com/David-Maisonave/GitRelease/blob/main/GitRelease.cmd) batch script builds Visual Studio dotnet solution in multiple platforms, updates the Git repository, and creates a Github package. It performs this action from a Windows remote desktop computer, and not server-side.
 
 # Content
 -  [Description](README.md#Description)
