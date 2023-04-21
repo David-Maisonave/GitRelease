@@ -80,6 +80,10 @@ setlocal ENABLEDELAYEDEXPANSION
 ::				%ReleaseName%
 ::				Enter release notes which can use same arguments as release title.
 ::				Version %MajorVersion%.%MinorVersion% build date=%YEAR%-%MONTH%-%DAY%
+:: Setup Project
+::		If the solution has an installer (Setup Project), this script will built it if it has the following format:
+::		Project-File:	%ReleaseName%_Setup\%ReleaseName%_Setup.vdproj
+::		Project-Output:	.\%ReleaseName%_Setup\Release\%ReleaseName%_Setup.msi
 
 :: First get command line variables
 set IsTrue=true
@@ -267,6 +271,8 @@ if NOT exist %PkgBaseDir%\ (
 )
 if NOT exist %PkgDir%\ (
 	mkdir %PkgDir%
+) else (
+	del /Q /F %PkgDir%\*
 )
 set ListOfOS=win-x64 osx-x64 linux-x64 osx-arm64
 (for %%a in (%ListOfOS%) do (
@@ -294,6 +300,13 @@ set ListOfOS=win-x64 osx-x64 linux-x64 osx-arm64
 				EXIT /B 0
 			)
 			call set "FileList=%%FileList%%%PkgDir%\%PkgPrefix%%%a%PkgPostfix%.zip " 
+			:: Try to build an MSI file if setup project exist using the project name + Setup
+			if exist %ReleaseName%_Setup\%ReleaseName%_Setup.vdproj (
+				:: Change the following line if using different VS version or if VS installed in different location:
+				"C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\devenv.exe" %ReleaseName%.sln /build Release /project %ReleaseName%_Setup\%ReleaseName%_Setup.vdproj  /projectconfig Release
+				move /Y .\%ReleaseName%_Setup\Release\%ReleaseName%_Setup.msi %PkgDir%\%PkgPrefix%%%a%PkgPostfix%_Setup.msi
+				call set "FileList=%%FileList%%%PkgDir%\%PkgPrefix%%%a%PkgPostfix%_Setup.msi "
+			)
 		) else (
 			echo          %Line__Separator4%
 			echo          Creating %%a TAR file
@@ -327,6 +340,8 @@ set ListOfOS=win-x64 osx-x64 linux-x64 osx-arm64
 	echo    Process complete for %%a
 	echo    %Line__Separator2%
 ))
+
+
 echo All packages complete
 echo Package build list = %FileList%
 echo %Line__Separator1%
