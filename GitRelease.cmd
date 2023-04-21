@@ -14,6 +14,11 @@ setlocal ENABLEDELAYEDEXPANSION
 ::    C. Sets the identifier as the to the incremented minor version value.
 ::       1) The identifier helps when updating a program. It helps the installer to determine if the new install is newer than the current installation.
 ::    D. Sets release name by getting the value from release_variables.txt
+::    E. If a setup project (VdProj file) exist (%ReleaseName%_Setup\%ReleaseName%_Setup.vdproj)
+::       1) Creates a copy of the VdProj file with the ProductVersion number updated to the new incremented value.
+::       2) Builds the setup project
+::       3) Moves and renames the MSI file so that the MSI file includes the version number and the file name is in the same format as the other compressed packages
+::       4) Adds the MSI package to the list of files to be uploaded to the new Github release
 :: 2. Compresses windows files to zip, and all others to tgz
 :: 3. Updates Github Repository if steps 1 & 2 completed successfully
 :: 4. Creates a new Github release using the version
@@ -33,6 +38,7 @@ setlocal ENABLEDELAYEDEXPANSION
 ::					Does NOT increment minor version, and uses last version from previous build.
 :: RelNotes
 ::					Release notes used to create Git release package. Argument should have double quotes.
+::					This option overrides the value in the release_variables.txt
 ::					Can include batch variables: %ReleaseName%, %MajorVersion%, %MinorVersion%, %DotNetVer%, %ReleaseTitle%, %Identifier%, %ProgramVersion%, %ReleaseTag%, %YEAR%, %MONTH%, %DAY%
 ::					Example: GitRelease.cmd RelNotes "%ReleaseName% Version %MajorVersion%.%MinorVersion% build date=%YEAR%-%MONTH%-%DAY%"
 ::					Default is "%ReleaseName%_Ver%MajorVersion%.%MinorVersion%"
@@ -41,10 +47,11 @@ setlocal ENABLEDELAYEDEXPANSION
 ::					This option overrides the value in the release_variables.txt
 ::					Can include batch variables. See RelNotes.
 ::					Default is "%ReleaseName%_Ver%MajorVersion%.%MinorVersion%"
+:: NoClean
+::					Does NOT delete temporary files after processing
 :: TestRun
 ::					This option is the same as the combination of the following options:
-::					This option overrides the value in the release_variables.txt
-::					NoRepoUpdate & NoGitRel & NoIncVer
+::					NoRepoUpdate & NoGitRel & NoIncVer & NoClean
 :: TestVar
 ::					Only display variable values.
 ::					To avoid incrementing version, use this command in conjunction with NoIncVer. Example: GitRelease.cmd TestVar NoIncVer
@@ -55,7 +62,6 @@ setlocal ENABLEDELAYEDEXPANSION
 ::					GitRelease.cmd TestVar NoIncVer
 ::					GitRelease.cmd RelNotes "Beta Version %MinorVersion%" RelTitle MediaFileDuplicateFinderApp
 ::					GitRelease.cmd RelTitle "Latest of %ReleaseName% Version %MinorVersion%"
-:: ################################################################################################
 :: Requirements
 :: Git installation: https://git-scm.com/book/en/v2/Getting-Started-Installing-Git
 :: Github CLI: https://github.com/cli/cli/releases
@@ -85,13 +91,15 @@ setlocal ENABLEDELAYEDEXPANSION
 ::		Project-File:	%ReleaseName%_Setup\%ReleaseName%_Setup.vdproj
 ::		Project-Output:	.\%ReleaseName%_Setup\Release\%ReleaseName%_Setup.msi
 
-:: First get command line variables
+:: ################################################################################################
+:: Step 1: Get command line variables
 set IsTrue=true
 set NoRepoUpdate=
 set NoBld=
 set NoCompress=
 set NoGitRel=
 set NoIncVer=
+set NoClean=
 set TestVar=
 set RelNotes=
 set RelTitle=
@@ -109,11 +117,14 @@ for %%a in (%*) do (
 								set NoRepoUpdate=%IsTrue%
 								set NoGitRel=%IsTrue%
 								set NoIncVer=%IsTrue%
+								set NoClean=%IsTrue%
 							) else (
-								if [%%a] == [RelNotes] (set RelNotes=%IsTrue%) else (
-									if [%%a] == [RelTitle] (set RelTitle=%IsTrue%) else (
-										if [!RelNotes!] == [%IsTrue%] (call set "RelNotes=%%a") else (
-											if [!RelTitle!] == [%IsTrue%] (set RelTitle=%%a)
+								if [%%a] == [NoClean] (set NoClean=%IsTrue%) else (
+									if [%%a] == [RelNotes] (set RelNotes=%IsTrue%) else (
+										if [%%a] == [RelTitle] (set RelTitle=%IsTrue%) else (
+											if [!RelNotes!] == [%IsTrue%] (call set "RelNotes=%%a") else (
+												if [!RelTitle!] == [%IsTrue%] (set RelTitle=%%a)
+											)
 										)
 									)
 								)
@@ -130,11 +141,13 @@ echo NoBld = "%NoBld%"
 echo NoCompress = "%NoCompress%"
 echo NoGitRel = "%NoGitRel%"
 echo NoIncVer = "%NoIncVer%"
+echo NoClean = %NoClean%
 echo TestVar = "%TestVar%"
 echo RelTitle = %RelTitle%
 echo RelNotes = %RelNotes%
 
-:: Second setup variables
+:: ################################################################################################
+:: Step 2: Setup variables
 set Line__Separator1=#####################################################
 set Line__Separator2=*****************************************************
 set Line__Separator3=-----------------------------------------------------
@@ -247,14 +260,20 @@ set ReleaseNotes="%ReleaseNotes%"
 set ReleaseTag="%PkgPrefix%Ver%MajorVersion%.%MinorVersion%"
 set PkgPrefix=%ReleaseName%_
 set PkgPostfix=_Ver%MajorVersion%.%MinorVersion%
+set SetupProjectFile_VdProj=%ReleaseName%_Setup\%ReleaseName%_Setup.vdproj
+set SetupProjectFile_VdProj_Temp=%SetupProjectFile_VdProj%_temp.vdproj
+set ProductVersionStrToFind=ProductVersion
+:: Excluding 4th number from the product version, because VdProj do not allow Revision number in the ProductVersion
+set NewProductVersion=        "ProductVersion" = "%MajorVersion%.%MinorVersion%.%YEAR%"
+:: Change the following if using different version of VS
+set VS_Devenv="C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\devenv.exe"
+
 
 echo %Line__Separator1%
 echo Program Version = %ProgramVersion% ;Release Name = "%ReleaseName%" ;Identifier = %Identifier%
 echo YEAR = "%YEAR%" ;MONTH = "%MONTH%" ;DAY = "%DAY%" 
 echo Release Title = %ReleaseTitle% ;Release Notes = %ReleaseNotes% 
 echo %Line__Separator1%
-
-
 
 echo Pre-compile variables set
 echo %Line__Separator1%
@@ -265,6 +284,8 @@ if [%NoBld%] == [%IsTrue%] (
 	echo Skipping build
 	goto :SkipBuild
 )
+:: ################################################################################################
+:: Step 3: Build the solution and save to compress packages
 echo Building all platforms
 if NOT exist %PkgBaseDir%\ (
 	mkdir %PkgBaseDir%
@@ -301,11 +322,24 @@ set ListOfOS=win-x64 osx-x64 linux-x64 osx-arm64
 			)
 			call set "FileList=%%FileList%%%PkgDir%\%PkgPrefix%%%a%PkgPostfix%.zip " 
 			:: Try to build an MSI file if setup project exist using the project name + Setup
-			if exist %ReleaseName%_Setup\%ReleaseName%_Setup.vdproj (
-				:: Change the following line if using different VS version or if VS installed in different location:
-				"C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\devenv.exe" %ReleaseName%.sln /build Release /project %ReleaseName%_Setup\%ReleaseName%_Setup.vdproj  /projectconfig Release
-				move /Y .\%ReleaseName%_Setup\Release\%ReleaseName%_Setup.msi %PkgDir%\%PkgPrefix%%%a%PkgPostfix%_Setup.msi
-				call set "FileList=%%FileList%%%PkgDir%\%PkgPrefix%%%a%PkgPostfix%_Setup.msi "
+			if exist %SetupProjectFile_VdProj% (
+				:: Replace the product version number
+				>"%SetupProjectFile_VdProj_Temp%" (
+				  for /f "usebackq delims=" %%a in ("%SetupProjectFile_VdProj%") do (
+					SET fn=%%~na
+					SET fn=!fn:~9,14!
+					if [!fn!] == [%ProductVersionStrToFind%] (echo %NewProductVersion%) else (echo %%a)
+				  )
+				)
+				if exist %SetupProjectFile_VdProj_Temp% (
+					:: Change the following line if using different VS version or if VS installed in different location:
+					%VS_Devenv% %ReleaseName%.sln /build Release /project %SetupProjectFile_VdProj_Temp%  /projectconfig Release
+					move /Y .\%ReleaseName%_Setup\Release\%ReleaseName%_Setup.msi %PkgDir%\%PkgPrefix%%%a%PkgPostfix%_Setup.msi
+					call set "FileList=%%FileList%%%PkgDir%\%PkgPrefix%%%a%PkgPostfix%_Setup.msi "
+					if [%NoClean%] == [%IsTrue%] ( echo Skipping delete of %SetupProjectFile_VdProj_Temp%) else (
+						del /Q %SetupProjectFile_VdProj_Temp%
+					)
+				)
 			)
 		) else (
 			echo          %Line__Separator4%
@@ -330,8 +364,9 @@ set ListOfOS=win-x64 osx-x64 linux-x64 osx-arm64
 				EXIT /B 0
 			)
 			echo          %Line__Separator4%
-			echo          del /Q /F .\%PkgDir%\%PkgPrefix%%%a%PkgPostfix%.tar
-			del /Q /F .\%PkgDir%\%PkgPrefix%%%a%PkgPostfix%.tar
+			if [%NoClean%] == [%IsTrue%] ( echo Skipping delete of %PkgDir%\%PkgPrefix%%%a%PkgPostfix%.tar) else (
+				del /Q .\%PkgDir%\%PkgPrefix%%%a%PkgPostfix%.tar
+			)
 			call set "FileList=%%FileList%%%PkgDir%\%PkgPrefix%%%a%PkgPostfix%.tgz "
 		)
 		echo       Package files compressed for %%a
@@ -351,7 +386,8 @@ if [%NoRepoUpdate%] == [%IsTrue%] (
 	echo Skipping repository update
 	goto :SkipRepoUpdate
 )
-:: Silently update github repository
+:: ################################################################################################
+:: Step 4: Silently update github repository
 :: Add all file changes
 git add .
 :: Setup a silent commit
@@ -367,6 +403,8 @@ if [%NoGitRel%] == [%IsTrue%] (
 	echo Skipping creating a Git release
 	goto :SkipCreatingGitRelease
 )
+:: ################################################################################################
+:: Step 5: Create a Github release and upload the packages
 echo creating new release on Github
 echo gh release create %ReleaseTag% %FileList% --latest --title %ReleaseTitle% --notes %ReleaseNotes%
 gh release create %ReleaseTag% %FileList% --latest --title %ReleaseTitle% --notes %ReleaseNotes%
