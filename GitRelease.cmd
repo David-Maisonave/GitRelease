@@ -36,6 +36,14 @@ setlocal ENABLEDELAYEDEXPANSION
 ::					Does NOT create a new Github release, and does NOT upload packages
 :: NoIncVer
 ::					Does NOT increment minor version, and uses last version from previous build.
+:: NoIncUpdate
+::					Increments minor version, but does NOT increment the file
+:: NoSetup
+::					Do NOT build Setup Project (VDPROJ)
+:: NoVdProjReset
+::					Leaves the VdProj modified, and does NOT reset to original file.
+:: NoClean
+::					Does NOT delete temporary files after processing
 :: RelNotes
 ::					Release notes used to create Git release package. Argument should have double quotes.
 ::					This option overrides the value in the release_variables.txt
@@ -47,19 +55,17 @@ setlocal ENABLEDELAYEDEXPANSION
 ::					This option overrides the value in the release_variables.txt
 ::					Can include batch variables. See RelNotes.
 ::					Default is "%ReleaseName%_Ver%MajorVersion%.%MinorVersion%"
-:: NoClean
-::					Does NOT delete temporary files after processing
 :: TestRun
 ::					This option is the same as the combination of the following options:
-::					NoRepoUpdate & NoGitRel & NoIncVer & NoClean
+::					NoRepoUpdate & NoGitRel & NoIncUpdate & NoClean
 :: TestVar
 ::					Only display variable values.
-::					To avoid incrementing version, use this command in conjunction with NoIncVer. Example: GitRelease.cmd TestVar NoIncVer
+::					To avoid incrementing version, use this command in conjunction with NoIncUpdate. Example: GitRelease.cmd TestVar NoIncUpdate
 ::
 :: Example Usage:
 ::					GitRelease.cmd TestRun
 ::					GitRelease.cmd NoRepoUpdate NoGitRel
-::					GitRelease.cmd TestVar NoIncVer
+::					GitRelease.cmd TestVar NoIncUpdate
 ::					GitRelease.cmd RelNotes "Beta Version %MinorVersion%" RelTitle MediaFileDuplicateFinderApp
 ::					GitRelease.cmd RelTitle "Latest of %ReleaseName% Version %MinorVersion%"
 :: Requirements
@@ -91,13 +97,37 @@ setlocal ENABLEDELAYEDEXPANSION
 ::		Project-File:	%ReleaseName%_Setup\%ReleaseName%_Setup.vdproj
 ::		Project-Output:	.\%ReleaseName%_Setup\Release\%ReleaseName%_Setup.msi
 
+:: Used for output format, to make it easier to read output
+set Line__Separator1=#####################################################
+set Line__Separator2=*****************************************************
+set Line__Separator3=-----------------------------------------------------
+set Line__Separator4=.....................................................
+
 :: ################################################################################################
-:: Step 1: Get command line variables
+echo %Line__Separator1%
+echo Step [0]: Make sure dotnet.exe is available before anything else
+WHERE dotnet
+IF %ERRORLEVEL% NEQ 0 (
+	echo %Line__Separator1%
+	echo %Line__Separator2%
+	echo Error: dotnet.exe is not installed, or its path is not in the environmental variable path
+	echo        How to fix:
+	echo            Make sure dotnet is installed.
+	echo            Make sure dotnet.exe installation path is included in the environmental variable path
+	echo Performing early exit due to missing dotnet.exe!!!!
+	echo %Line__Separator2%
+	echo %Line__Separator1%
+	EXIT /B 0
+)
+:: ################################################################################################
+echo %Line__Separator1%
+echo Step [1]: Get command line variables
 set IsTrue=true
 set NoRepoUpdate=
 set NoBld=
 set NoCompress=
 set NoGitRel=
+set NoIncUpdate=
 set NoIncVer=
 set NoClean=
 set TestVar=
@@ -112,18 +142,24 @@ for %%a in (%*) do (
 			if [%%a] == [NoCompress] (set NoCompress=%IsTrue%) else (
 				if [%%a] == [NoGitRel] (set NoGitRel=%IsTrue%) else (
 					if [%%a] == [NoIncVer] (set NoIncVer=%IsTrue%) else (
-						if [%%a] == [TestVar] (set TestVar=%IsTrue%) else (
-							if [%%a] == [TestRun] (
-								set NoRepoUpdate=%IsTrue%
-								set NoGitRel=%IsTrue%
-								set NoIncVer=%IsTrue%
-								set NoClean=%IsTrue%
-							) else (
-								if [%%a] == [NoClean] (set NoClean=%IsTrue%) else (
-									if [%%a] == [RelNotes] (set RelNotes=%IsTrue%) else (
-										if [%%a] == [RelTitle] (set RelTitle=%IsTrue%) else (
-											if [!RelNotes!] == [%IsTrue%] (call set "RelNotes=%%a") else (
-												if [!RelTitle!] == [%IsTrue%] (set RelTitle=%%a)
+						if [%%a] == [NoIncUpdate] (set NoIncUpdate=%IsTrue%) else (
+							if [%%a] == [TestVar] (set TestVar=%IsTrue%) else (
+								if [%%a] == [TestRun] (
+									set NoRepoUpdate=%IsTrue%
+									set NoGitRel=%IsTrue%
+									set NoIncUpdate=%IsTrue%
+									set NoClean=%IsTrue%
+								) else (
+									if [%%a] == [NoSetup] (set NoSetup=%IsTrue%) else (
+										if [%%a] == [NoVdProjReset] (set NoVdProjReset=%IsTrue%) else (
+											if [%%a] == [NoClean] (set NoClean=%IsTrue%) else (
+												if [%%a] == [RelNotes] (set RelNotes=%IsTrue%) else (
+													if [%%a] == [RelTitle] (set RelTitle=%IsTrue%) else (
+														if [!RelNotes!] == [%IsTrue%] (call set "RelNotes=%%a") else (
+															if [!RelTitle!] == [%IsTrue%] (set RelTitle=%%a)
+														)
+													)
+												)
 											)
 										)
 									)
@@ -136,22 +172,26 @@ for %%a in (%*) do (
 		)
 	)
 )
-echo NoRepoUpdate = "%NoRepoUpdate%"
-echo NoBld = "%NoBld%"
-echo NoCompress = "%NoCompress%"
-echo NoGitRel = "%NoGitRel%"
-echo NoIncVer = "%NoIncVer%"
-echo NoClean = %NoClean%
-echo TestVar = "%TestVar%"
-echo RelTitle = %RelTitle%
-echo RelNotes = %RelNotes%
+
+echo %Line__Separator4%
+echo Command line options:
+echo    NoRepoUpdate	=   "%NoRepoUpdate%"
+echo    NoBld			=   "%NoBld%"
+echo    NoCompress		=   "%NoCompress%"
+echo    NoGitRel		=   "%NoGitRel%"
+echo    NoIncVer		=   "%NoIncVer%"
+echo    NoIncUpdate		=   "%NoIncUpdate%"
+echo    NoSetup			=   %NoSetup%
+echo    NoVdProjReset	=   %NoVdProjReset%
+echo    NoClean			=   %NoClean%
+echo    TestVar			=   "%TestVar%"
+echo    RelTitle		=   %RelTitle%
+echo    RelNotes		=   %RelNotes%
+echo %Line__Separator4%
 
 :: ################################################################################################
-:: Step 2: Setup variables
-set Line__Separator1=#####################################################
-set Line__Separator2=*****************************************************
-set Line__Separator3=-----------------------------------------------------
-set Line__Separator4=.....................................................
+echo %Line__Separator1%
+echo Step [2]: Setup pre-compile variables
 set ReleaseFileVariables=release_variables.txt
 :: Note: Change the following line, if 7z is installed in a different path.
 set Prg7Zip=C:\Program Files\7-Zip\7z
@@ -220,6 +260,10 @@ if [%NoIncVer%] == [%IsTrue%] (
 )
 echo Incrementing minor version
 set /A MinorVersion+=1
+if [%NoIncUpdate%] == [%IsTrue%] (
+	echo Skipping saving incremented minor version to file %ReleaseFileVariables%
+	goto :SkipIncVersion
+)
 echo %VarName1%>.\%ReleaseFileVariables%
 echo %ReleaseName% >>.\%ReleaseFileVariables%
 echo %VarName2%>>.\%ReleaseFileVariables%
@@ -262,12 +306,35 @@ set PkgPrefix=%ReleaseName%_
 set PkgPostfix=_Ver%MajorVersion%.%MinorVersion%
 set SetupProjectFile_VdProj=%ReleaseName%_Setup\%ReleaseName%_Setup.vdproj
 set SetupProjectFile_VdProj_Temp=%SetupProjectFile_VdProj%_temp.vdproj
+set SetupProjectFile_VdProj_TempRename=%SetupProjectFile_VdProj%_temp_rename.vdproj
 set ProductVersionStrToFind=ProductVersion
 :: Excluding 4th number from the product version, because VdProj do not allow Revision number in the ProductVersion
-set NewProductVersion=        "ProductVersion" = "%MajorVersion%.%MinorVersion%.%YEAR%"
-:: Change the following if using different version of VS
-set VS_Devenv="C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\devenv.exe"
-
+set NewProductVersion=        "ProductVersion" = "8:%MajorVersion%.%MinorVersion%.%YEAR%"
+set VS_Devenv=
+set VS_DevenvExe=Common7\IDE\devenv.exe
+WHERE devenv.exe
+IF %ERRORLEVEL% NEQ 0 (
+	:: Find the devenv.exe installed path (only needed for solutions with MSI package)
+	echo %Line__Separator3%
+	(for %%e in (Enterprise Professional Community) do (
+		(for %%v in (2024 2022 2019 2017) do (
+			if exist "C:\Program Files\Microsoft Visual Studio\%%v\%%e\%VS_DevenvExe%" (
+				set VS_Devenv="C:\Program Files\Microsoft Visual Studio\%%v\%%e\%VS_DevenvExe%"
+				goto :DoneDevenvSearch
+			) else (
+				if exist "C:\Program Files (x86)\Microsoft Visual Studio\%%v\%%e\%VS_DevenvExe%" (
+					set VS_Devenv="C:\Program Files (x86)\Microsoft Visual Studio\%%v\%%e\%VS_DevenvExe%"
+					goto :DoneDevenvSearch
+				)
+			)
+		))
+	))
+	echo %Line__Separator3%
+) else (
+	set VS_Devenv=devenv.exe
+	echo Found %VS_Devenv%
+)
+:DoneDevenvSearch
 
 echo %Line__Separator1%
 echo Program Version = %ProgramVersion% ;Release Name = "%ReleaseName%" ;Identifier = %Identifier%
@@ -285,8 +352,8 @@ if [%NoBld%] == [%IsTrue%] (
 	goto :SkipBuild
 )
 :: ################################################################################################
-:: Step 3: Build the solution and save to compress packages
-echo Building all platforms
+echo %Line__Separator1%
+echo Step [3]: Build all platforms in the solution and save to compress packages
 if NOT exist %PkgBaseDir%\ (
 	mkdir %PkgBaseDir%
 )
@@ -321,23 +388,71 @@ set ListOfOS=win-x64 osx-x64 linux-x64 osx-arm64
 				EXIT /B 0
 			)
 			call set "FileList=%%FileList%%%PkgDir%\%PkgPrefix%%%a%PkgPostfix%.zip " 
-			:: Try to build an MSI file if setup project exist using the project name + Setup
-			if exist %SetupProjectFile_VdProj% (
-				:: Replace the product version number
-				>"%SetupProjectFile_VdProj_Temp%" (
-				  for /f "usebackq delims=" %%a in ("%SetupProjectFile_VdProj%") do (
-					SET fn=%%~na
-					SET fn=!fn:~9,14!
-					if [!fn!] == [%ProductVersionStrToFind%] (echo %NewProductVersion%) else (echo %%a)
-				  )
-				)
-				if exist %SetupProjectFile_VdProj_Temp% (
-					:: Change the following line if using different VS version or if VS installed in different location:
-					%VS_Devenv% %ReleaseName%.sln /build Release /project %SetupProjectFile_VdProj_Temp%  /projectconfig Release
-					move /Y .\%ReleaseName%_Setup\Release\%ReleaseName%_Setup.msi %PkgDir%\%PkgPrefix%%%a%PkgPostfix%_Setup.msi
-					call set "FileList=%%FileList%%%PkgDir%\%PkgPrefix%%%a%PkgPostfix%_Setup.msi "
-					if [%NoClean%] == [%IsTrue%] ( echo Skipping delete of %SetupProjectFile_VdProj_Temp%) else (
-						del /Q %SetupProjectFile_VdProj_Temp%
+			if [%NoSetup%] == [%IsTrue%] (echo Skipping building MSI) else (
+				:: Try to build an MSI file if setup project exist using the project name + Setup
+				if exist %SetupProjectFile_VdProj% (
+					if [%VS_Devenv%] == [] (
+						echo %Line__Separator1%
+						echo Error: Can not build %SetupProjectFile_VdProj%, because devenv.exe was not found.
+						echo         Possible fixes:
+						echo             1. Install Visual Studio version 2022, 2019, or 2017
+						echo             2. If using older VS version, or if using a non-standard installed path,
+						echo                add the path to the system environmental variable PATH
+						echo             3. Exclude building MSI [VdProj] by adding NoSetup to the command line options.
+						echo %Line__Separator1%
+						EXIT /B 0
+					)
+					if exist .\%SetupProjectFile_VdProj_Temp% (del /Y .\%SetupProjectFile_VdProj_Temp%)
+					:: Replace the product version number
+					>"%SetupProjectFile_VdProj_Temp%" (
+					  for /f "usebackq delims=" %%a in ("%SetupProjectFile_VdProj%") do (
+						SET fn=%%~na
+						SET fn=!fn:~9,14!
+						if [!fn!] == [%ProductVersionStrToFind%] (echo %NewProductVersion%) else (echo %%a)
+					  )
+					)
+					if exist %SetupProjectFile_VdProj_Temp% (
+						if exist .\%ReleaseName%_Setup\Release\%ReleaseName%_Setup.msi ( del /Y .\%ReleaseName%_Setup\Release\%ReleaseName%_Setup.msi )
+						move /Y %SetupProjectFile_VdProj% %SetupProjectFile_VdProj_TempRename%
+						move /Y %SetupProjectFile_VdProj_Temp% %SetupProjectFile_VdProj%
+						echo %VS_Devenv% %ReleaseName%.sln /build Release /project %SetupProjectFile_VdProj%  /projectconfig Release
+						%VS_Devenv% %ReleaseName%.sln /build Release /project %SetupProjectFile_VdProj%  /projectconfig Release
+						:: Note: Do not exit in the following if-block, because the files have to be renamed back. If previous command fails, the MSI move command will fail and exit.
+						if %ERRORLEVEL% NEQ 0 (
+							echo %Line__Separator1%
+							echo Error: Devenv failed with return error %ERRORLEVEL%.
+							echo   %Line__Separator4%
+							echo   Issued Command:
+							echo     %VS_Devenv% %ReleaseName%.sln /build Release /project %SetupProjectFile_VdProj%  /projectconfig Release
+							echo   %Line__Separator4%
+							echo %Line__Separator1%
+						)
+						if [%NoVdProjReset%] == [%IsTrue%] (echo Skipping resetting VdProj file back) else (
+							move /Y %SetupProjectFile_VdProj% %SetupProjectFile_VdProj_Temp%
+							move /Y %SetupProjectFile_VdProj_TempRename% %SetupProjectFile_VdProj%
+						)
+						move /Y .\%ReleaseName%_Setup\Release\%ReleaseName%_Setup.msi %PkgDir%\%PkgPrefix%%%a%PkgPostfix%_Setup.msi
+						if %ERRORLEVEL% NEQ 0 (
+							echo %Line__Separator1%
+							echo Error: Failed to create MSI or failed to move MSI file to deployment path.
+							echo         Possible fixes:
+							echo             1. Check write permissions for path "%~dp0%PkgDir%"
+							echo             2. Try following command on the DOS prompt in folder "%~dp0":
+							echo                %VS_Devenv% %ReleaseName%.sln /build Release /project %SetupProjectFile_VdProj%  /projectconfig Release
+							echo             3. Exclude building MSI [VdProj] by adding NoSetup to the command line options.
+							echo %Line__Separator1%
+							EXIT /B 0
+						)
+						call set "FileList=%%FileList%%%PkgDir%\%PkgPrefix%%%a%PkgPostfix%_Setup.msi "
+						if [%NoClean%] == [%IsTrue%] ( echo Skipping delete of %SetupProjectFile_VdProj_Temp%) else ( del /Q %SetupProjectFile_VdProj_Temp%	)
+					) else (
+						echo %Line__Separator1%
+						echo Error: Failed to create temporary VdProj file [%SetupProjectFile_VdProj_Temp%]
+						echo         Possible fixes:
+						echo             1. Check write permissions for path "%~dp0%%SetupProjectFile_VdProj_Temp%"
+						echo             2. Exclude building MSI [VdProj] by adding NoSetup to the command line options.
+						echo %Line__Separator1%
+						EXIT /B 0
 					)
 				)
 			)
@@ -387,7 +502,8 @@ if [%NoRepoUpdate%] == [%IsTrue%] (
 	goto :SkipRepoUpdate
 )
 :: ################################################################################################
-:: Step 4: Silently update github repository
+echo %Line__Separator1%
+echo Step [4]: Silently update github repository
 :: Add all file changes
 git add .
 :: Setup a silent commit
@@ -404,15 +520,21 @@ if [%NoGitRel%] == [%IsTrue%] (
 	goto :SkipCreatingGitRelease
 )
 :: ################################################################################################
-:: Step 5: Create a Github release and upload the packages
-echo creating new release on Github
+echo %Line__Separator1%
+echo Step [5]: Create new Github release and upload the packages
 echo gh release create %ReleaseTag% %FileList% --latest --title %ReleaseTitle% --notes %ReleaseNotes%
 gh release create %ReleaseTag% %FileList% --latest --title %ReleaseTitle% --notes %ReleaseNotes%
 if %ERRORLEVEL% NEQ 0 (
 	echo %Line__Separator1%
+	echo %Line__Separator2%
 	echo Error: Creating a Github release failed!
 	echo Error: Failed due to error %ERRORLEVEL% from gh release for files %FileList%.
-	echo Check if these files exist in path "%~dp0%PkgDir%"
+	echo        Check if these files exist in path "%~dp0%PkgDir%"
+	echo %Line__Separator3%
+	echo Package List:
+	echo %FileList%
+	echo %Line__Separator3%
+	echo %Line__Separator2%
 	echo %Line__Separator1%
 	EXIT /B 0
 )
