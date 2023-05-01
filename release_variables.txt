@@ -9,4 +9,6 @@ net7.0
 Enter release title which can use environmental variables and/or batch variables like the following:%ReleaseName%, %MajorVersion%, %MinorVersion%, %DotNetVer%, %ReleaseTitle%, %Identifier%, %ProgramVersion%, %ReleaseTag%, %YEAR%, %MONTH%, %DAY%
 %ReleaseName% Version %MajorVersion%.%MinorVersion%
 Enter release notes which can also use environmental variables.
-Beta Version %MajorVersion%.%MinorVersion% build date=%YEAR%-%MONTH%-%DAY%; Made improvements to the build script.
+Beta Version %MajorVersion%.%MinorVersion% build date=%YEAR%-%MONTH%-%DAY%; Set correct version in MSI package
+Project to change version (Only needed if building MSI package)
+MyProjectFolder\MyProject.csproj

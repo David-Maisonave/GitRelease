@@ -37,7 +37,7 @@ setlocal ENABLEDELAYEDEXPANSION
 :: NoIncVer
 ::					Does NOT increment minor version, and uses last version from previous build.
 :: NoIncUpdate
-::					Increments minor version, but does NOT increment the file
+::					Increments minor version, but does NOT increment the value in release_variables.txt
 :: NoSetup
 ::					Do NOT build Setup Project (VDPROJ)
 :: NoVdProjReset
@@ -191,25 +191,17 @@ echo %Line__Separator4%
 
 :: ################################################################################################
 echo %Line__Separator1%
-echo Step [2]: Setup pre-compile variables
 set ReleaseFileVariables=release_variables.txt
-:: Note: Change the following line, if 7z is installed in a different path.
-set Prg7Zip=C:\Program Files\7-Zip\7z
-set Success=%IsTrue%
-:: Get and set the julian date
-for /F "tokens=2-4 delims=/ " %%a in ("%date%") do (
-   set /A "MM=1%%a-100, DD=1%%b-100, Ymod4=%%c%%4"
-)
-for /F "tokens=%MM%" %%m in ("0 31 59 90 120 151 181 212 243 273 304 334") do set /A JulianDate=DD+%%m
-if %Ymod4% equ 0 if %MM% gtr 2 set /A JulianDate+=1
-
+echo %Line__Separator3%
+echo Step [2a]: Get variable values from "%~dp0%ReleaseFileVariables%"
 :: Read variables from a file
-set "_var=VarName1,ReleaseName,VarName2,MajorVersion,VarName3,MinorVersion,VarName4,DotNetVer,VarName5,ReleaseTitle,VarName6,ReleaseNotes"
+set "_var=VarDescription1,ReleaseName,VarDescription2,MajorVersion,VarDescription3,MinorVersion,VarDescription4,DotNetVer,VarDescription5,ReleaseTitle,VarDescription6,ReleaseNotes,VarDescription7,ProjToChngVer"
 (for %%i in (%_var%)do set/p %%~i=)<.\%ReleaseFileVariables%
 set ReleaseName=%ReleaseName: =%
 set MajorVersion=%MajorVersion: =%
 set MinorVersion=%MinorVersion: =%
 set DotNetVer=%DotNetVer: =%
+
 
 if [%ReleaseName%] == [] (
 	echo %Line__Separator1%
@@ -264,18 +256,20 @@ if [%NoIncUpdate%] == [%IsTrue%] (
 	echo Skipping saving incremented minor version to file %ReleaseFileVariables%
 	goto :SkipIncVersion
 )
-echo %VarName1%>.\%ReleaseFileVariables%
+echo %VarDescription1%>.\%ReleaseFileVariables%
 echo %ReleaseName% >>.\%ReleaseFileVariables%
-echo %VarName2%>>.\%ReleaseFileVariables%
+echo %VarDescription2%>>.\%ReleaseFileVariables%
 echo %MajorVersion% >>.\%ReleaseFileVariables%
-echo %VarName3%>>.\%ReleaseFileVariables%
+echo %VarDescription3%>>.\%ReleaseFileVariables%
 echo %MinorVersion% >>.\%ReleaseFileVariables%
-echo %VarName4%>>.\%ReleaseFileVariables%
+echo %VarDescription4%>>.\%ReleaseFileVariables%
 echo %DotNetVer% >>.\%ReleaseFileVariables%
-echo %VarName5%>>.\%ReleaseFileVariables%
+echo %VarDescription5%>>.\%ReleaseFileVariables%
 echo %ReleaseTitle%>>.\%ReleaseFileVariables%
-echo %VarName6%>>.\%ReleaseFileVariables%
+echo %VarDescription6%>>.\%ReleaseFileVariables%
 echo %ReleaseNotes%>>.\%ReleaseFileVariables%
+echo %VarDescription7%>>.\%ReleaseFileVariables%
+echo %ProjToChngVer%>>.\%ReleaseFileVariables%
 :SkipIncVersion
 
 echo ReleaseName = "%ReleaseName%"
@@ -284,7 +278,19 @@ echo MinorVersion = "%MinorVersion%"
 echo DotNetVer = "%DotNetVer%"
 echo ReleaseTitle = "%ReleaseTitle%"
 echo ReleaseNotes = "%ReleaseNotes%"
+echo ProjToChngVer = "%ProjToChngVer%"
 
+:: ################################################################################################
+echo %Line__Separator3%
+echo Step [2b]: Setup remaining pre-compile variables
+:: Note: Change the following line, if 7z is installed in a different path.
+set Prg7Zip=C:\Program Files\7-Zip\7z
+:: Get and set the julian date
+for /F "tokens=2-4 delims=/ " %%a in ("%date%") do (
+   set /A "MM=1%%a-100, DD=1%%b-100, Ymod4=%%c%%4"
+)
+for /F "tokens=%MM%" %%m in ("0 31 59 90 120 151 181 212 243 273 304 334") do set /A JulianDate=DD+%%m
+if %Ymod4% equ 0 if %MM% gtr 2 set /A JulianDate+=1
 set PkgBaseDir=LocalPackageRepository
 set PkgDir=%PkgBaseDir%\Ver%MajorVersion%-%MinorVersion%
 set FileList=
@@ -308,8 +314,13 @@ set SetupProjectFile_VdProj=%ReleaseName%_Setup\%ReleaseName%_Setup.vdproj
 set SetupProjectFile_VdProj_Temp=%SetupProjectFile_VdProj%_temp.vdproj
 set SetupProjectFile_VdProj_TempRename=%SetupProjectFile_VdProj%_temp_rename.vdproj
 set ProductVersionStrToFind=ProductVersion
+set AssemblyVersionStrToFind=AssemblyVer
+set FileVersionStrToFind=FileVersion
 :: Excluding 4th number from the product version, because VdProj do not allow Revision number in the ProductVersion
-set NewProductVersion=        "ProductVersion" = "8:%MajorVersion%.%MinorVersion%.%YEAR%"
+set NewProductVersionInVdPrj=        "ProductVersion" = "8:%MajorVersion%.%MinorVersion%.%YEAR%"
+set NewAssemblyVersionLine="    ^<AssemblyVersion^>%MajorVersion%.%MinorVersion%.%YEAR%.%JulianDate%^</AssemblyVersion^>"
+set NewFileVersionLine="    ^<FileVersion^>%MajorVersion%.%MinorVersion%.%YEAR%.%JulianDate%^</FileVersion^>"
+
 set VS_Devenv=
 set VS_DevenvExe=Common7\IDE\devenv.exe
 WHERE devenv.exe
@@ -351,9 +362,46 @@ if [%NoBld%] == [%IsTrue%] (
 	echo Skipping build
 	goto :SkipBuild
 )
+
+
 :: ################################################################################################
 echo %Line__Separator1%
-echo Step [3]: Build all platforms in the solution and save to compress packages
+echo Step [3]: Start build process
+:: If not inc-version, skip following section
+if [%NoIncVer%] == [%IsTrue%] (
+	echo Skipping saving version to project file
+	goto :SkipSaveVersionToProj
+)
+set ProjToChngVer_temp=%ProjToChngVer%.temp
+set ProjToChngVer_rename=%ProjToChngVer%.original
+if exist %ProjToChngVer% (
+	echo     %Line__Separator2%
+	echo     Step [3a]: Update version in %ProjToChngVer%
+	if exist %ProjToChngVer_rename% (del /Y .\%ProjToChngVer_rename%)
+	if exist %ProjToChngVer_temp% (del /Y .\%ProjToChngVer_temp%)
+	:: Replace the product version number
+	>"%ProjToChngVer_temp%" (
+		for /f "usebackq delims=" %%a in ("%ProjToChngVer%") do (
+			SET fn=%%~na
+			SET fn=!fn:~0,11!
+			if [!fn!] == [%AssemblyVersionStrToFind%] (echo %NewAssemblyVersionLine:"=%) else (
+				if [!fn!] == [%FileVersionStrToFind%] (echo %NewFileVersionLine:"=%) else (echo %%a)
+			)
+		)
+	)
+	if exist %ProjToChngVer_temp% (
+		move /Y %ProjToChngVer% %ProjToChngVer_rename%
+		move /Y %ProjToChngVer_temp% %ProjToChngVer%
+		if [%NoClean%] == [%IsTrue%] ( echo Skipping delete of .\%ProjToChngVer_rename%) else (
+			del /Q .\%ProjToChngVer_rename%
+		)
+	)
+)
+:SkipSaveVersionToProj
+
+:: ************************************************************************************************
+echo %Line__Separator2%
+echo Step [3b]: Build all platforms in the solution and save to compress packages
 if NOT exist %PkgBaseDir%\ (
 	mkdir %PkgBaseDir%
 )
@@ -408,7 +456,7 @@ set ListOfOS=win-x64 osx-x64 linux-x64 osx-arm64
 					  for /f "usebackq delims=" %%a in ("%SetupProjectFile_VdProj%") do (
 						SET fn=%%~na
 						SET fn=!fn:~9,14!
-						if [!fn!] == [%ProductVersionStrToFind%] (echo %NewProductVersion%) else (echo %%a)
+						if [!fn!] == [%ProductVersionStrToFind%] (echo %NewProductVersionInVdPrj%) else (echo %%a)
 					  )
 					)
 					if exist %SetupProjectFile_VdProj_Temp% (
@@ -542,4 +590,6 @@ echo Git release creation complete for ReleaseTag %ReleaseTag%
 echo %Line__Separator1%
 :SkipCreatingGitRelease
 
-echo Done!
+echo %ReleaseTag% Done!
+
+Explorer.exe %~dp0%PkgDir%
