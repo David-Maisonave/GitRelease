@@ -252,24 +252,6 @@ if [%NoIncVer%] == [%IsTrue%] (
 )
 echo Incrementing minor version
 set /A MinorVersion+=1
-if [%NoIncUpdate%] == [%IsTrue%] (
-	echo Skipping saving incremented minor version to file %ReleaseFileVariables%
-	goto :SkipIncVersion
-)
-echo %VarDescription1%>.\%ReleaseFileVariables%
-echo %ReleaseName% >>.\%ReleaseFileVariables%
-echo %VarDescription2%>>.\%ReleaseFileVariables%
-echo %MajorVersion% >>.\%ReleaseFileVariables%
-echo %VarDescription3%>>.\%ReleaseFileVariables%
-echo %MinorVersion% >>.\%ReleaseFileVariables%
-echo %VarDescription4%>>.\%ReleaseFileVariables%
-echo %DotNetVer% >>.\%ReleaseFileVariables%
-echo %VarDescription5%>>.\%ReleaseFileVariables%
-echo %ReleaseTitle%>>.\%ReleaseFileVariables%
-echo %VarDescription6%>>.\%ReleaseFileVariables%
-echo %ReleaseNotes%>>.\%ReleaseFileVariables%
-echo %VarDescription7%>>.\%ReleaseFileVariables%
-echo %ProjToChngVer%>>.\%ReleaseFileVariables%
 :SkipIncVersion
 
 echo ReleaseName = "%ReleaseName%"
@@ -551,7 +533,7 @@ if [%NoRepoUpdate%] == [%IsTrue%] (
 )
 :: ################################################################################################
 echo %Line__Separator1%
-echo Step [4]: Silently update github repository
+echo Step [4]: Update github repository
 :: Add all file changes
 git add .
 :: Setup a silent commit
@@ -578,6 +560,10 @@ if %ERRORLEVEL% NEQ 0 (
 	echo Error: Creating a Github release failed!
 	echo Error: Failed due to error %ERRORLEVEL% from gh release for files %FileList%.
 	echo        Check if these files exist in path "%~dp0%PkgDir%"
+	echo        Check gh login status.
+	echo              gh auth status
+	echo              If not logged in, use command: gh auth login
+	gh auth status
 	echo %Line__Separator3%
 	echo Package List:
 	echo %FileList%
@@ -589,6 +575,30 @@ if %ERRORLEVEL% NEQ 0 (
 echo Git release creation complete for ReleaseTag %ReleaseTag%
 echo %Line__Separator1%
 :SkipCreatingGitRelease
+
+:: Saving incremented minor version is done last so if the build fails in above steps, this step is never executed
+if [%NoIncUpdate%] == [%IsTrue%] (
+	echo Skipping saving incremented minor version to file %ReleaseFileVariables%
+	goto :SkipIncUpdate
+)
+:: ################################################################################################
+echo %Line__Separator1%
+echo Step [6]: Save incremented minor version to file %ReleaseFileVariables%
+echo %VarDescription1%>.\%ReleaseFileVariables%
+echo %ReleaseName% >>.\%ReleaseFileVariables%
+echo %VarDescription2%>>.\%ReleaseFileVariables%
+echo %MajorVersion% >>.\%ReleaseFileVariables%
+echo %VarDescription3%>>.\%ReleaseFileVariables%
+echo %MinorVersion% >>.\%ReleaseFileVariables%
+echo %VarDescription4%>>.\%ReleaseFileVariables%
+echo %DotNetVer% >>.\%ReleaseFileVariables%
+echo %VarDescription5%>>.\%ReleaseFileVariables%
+echo %ReleaseTitle%>>.\%ReleaseFileVariables%
+echo %VarDescription6%>>.\%ReleaseFileVariables%
+echo %ReleaseNotes%>>.\%ReleaseFileVariables%
+echo %VarDescription7%>>.\%ReleaseFileVariables%
+echo %ProjToChngVer%>>.\%ReleaseFileVariables%
+:SkipIncUpdate
 
 echo %ReleaseTag% Done!
 
