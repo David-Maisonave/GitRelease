@@ -7,7 +7,7 @@ setlocal ENABLEDELAYEDEXPANSION
 ::    B. Sets Major version, Minor version, Build version and Revision version. (major.minor.build.revision [1.33.2022.123])
 ::       1) Sets major version with value in file release_variables.txt
 ::       2) Sets minor version with an incremented value. 
-::          a) Gets previous minor version from file {release_variables.txt}, increments it, and saves it back to the file.
+::          a) Gets previous minor version from file {release_minor_version.txt}, increments it, and saves it back to the file.
 ::       3) Sets the build version and revision version with the current date. 
 ::          a) The year is set for the build value, and julian date is set for the revision value.
 ::	 Example: [1.6.2023.123] Where 1 is major version, 6 is 
@@ -37,7 +37,7 @@ setlocal ENABLEDELAYEDEXPANSION
 :: NoIncVer
 ::					Does NOT increment minor version, and uses last version from previous build.
 :: NoIncUpdate
-::					Increments minor version, but does NOT increment the value in release_variables.txt
+::					Increments minor version, but does NOT increment the value in release_minor_version.txt
 :: NoSetup
 ::					Do NOT build Setup Project (VDPROJ)
 :: NoVdProjReset
@@ -76,7 +76,7 @@ setlocal ENABLEDELAYEDEXPANSION
 ::		If the solution has multiple projects, the project file "Base output path" settings should be set to $(SolutionDir)bin
 ::		This setting is normally needed because command line "-o" is no longer supported by dotnet.
 :: 7zip installed if 7z is not installed in path (C:\Program Files\7-Zip), change the value of variable Prg7Zip to correct path.
-:: Requires a file called release_variables.txt. See example file in this repository.
+:: Requires a files called release_minor_version.txt and release_variables.txt. See example file in this repository.
 ::		This file name can be changed by modifying variable ReleaseFileVariables.
 ::		The file contains release name, major version, minor version and dotnet target version.
 ::		It should be in the below format (excluding "::"). See example release_variables.txt file in this repository.
@@ -84,8 +84,6 @@ setlocal ENABLEDELAYEDEXPANSION
 ::				MyApplicationProgramNameHere
 ::				Enter desired major version number below. Value must be between 0-9999
 ::				1
-::				Enter desired minor version number below. Value must be between 0-9999
-::				33
 ::				Enter targeted dotnet version below.
 ::				net7.0
 ::				Enter release title which can use the following arguments:%ReleaseName%, %MajorVersion%, %MinorVersion%, %DotNetVer%, %ReleaseTitle%, %Identifier%, %ProgramVersion%, %ReleaseTag%, %YEAR%, %MONTH%, %DAY%
@@ -192,16 +190,17 @@ echo %Line__Separator4%
 :: ################################################################################################
 echo %Line__Separator1%
 set ReleaseFileVariables=release_variables.txt
+set ReleaseFileMinorVersion=release_minor_version.txt
 echo %Line__Separator3%
 echo Step [2a]: Get variable values from "%~dp0%ReleaseFileVariables%"
-:: Read variables from a file
-set "_var=VarDescription1,ReleaseName,VarDescription2,MajorVersion,VarDescription3,MinorVersion,VarDescription4,DotNetVer,VarDescription5,ReleaseTitle,VarDescription6,ReleaseNotes,VarDescription7,ProjToChngVer"
+:: Read variables from files
+set "_var=VarDescription,ReleaseName,VarDescription,MajorVersion,VarDescription,DotNetVer,VarDescription,ReleaseTitle,VarDescription,ReleaseNotes,VarDescription,ProjToChngVer"
 (for %%i in (%_var%)do set/p %%~i=)<.\%ReleaseFileVariables%
+set /p MinorVersion=<.\%ReleaseFileMinorVersion%
 set ReleaseName=%ReleaseName: =%
 set MajorVersion=%MajorVersion: =%
 set MinorVersion=%MinorVersion: =%
 set DotNetVer=%DotNetVer: =%
-
 
 if [%ReleaseName%] == [] (
 	echo %Line__Separator1%
@@ -227,7 +226,7 @@ if [%MajorVersion%] == [] (
 if [%MinorVersion%] == [] (
 	echo %Line__Separator1%
 	echo Error: Exiting early because MinorVersion is empty. MinorVersion="%MinorVersion%".
-	echo Check if file "%~dp0%ReleaseFileVariables%" is correctly formatted.
+	echo Check if file "%~dp0%ReleaseFileMinorVersion%" exist and is correctly formatted.
 	echo %Line__Separator1%
 	EXIT /B 0
 )
@@ -445,17 +444,21 @@ set ListOfOS=win-x64 osx-x64 linux-x64 osx-arm64
 						if exist .\%ReleaseName%_Setup\Release\%ReleaseName%_Setup.msi ( del /Y .\%ReleaseName%_Setup\Release\%ReleaseName%_Setup.msi )
 						move /Y %SetupProjectFile_VdProj% %SetupProjectFile_VdProj_TempRename%
 						move /Y %SetupProjectFile_VdProj_Temp% %SetupProjectFile_VdProj%
-						echo %VS_Devenv% %ReleaseName%.sln /build Release /project %SetupProjectFile_VdProj%  /projectconfig Release
-						%VS_Devenv% %ReleaseName%.sln /build Release /project %SetupProjectFile_VdProj%  /projectconfig Release
+						set MakeMSI_Cmd=%VS_Devenv% %ReleaseName%.sln /build Release /project %SetupProjectFile_VdProj%  /projectconfig Release
+						echo !MakeMSI_Cmd!
+						!MakeMSI_Cmd!
 						:: Note: Do not exit in the following if-block, because the files have to be renamed back. If previous command fails, the MSI move command will fail and exit.
 						if %ERRORLEVEL% NEQ 0 (
 							echo %Line__Separator1%
 							echo Error: Devenv failed with return error %ERRORLEVEL%.
 							echo   %Line__Separator4%
 							echo   Issued Command:
-							echo     %VS_Devenv% %ReleaseName%.sln /build Release /project %SetupProjectFile_VdProj%  /projectconfig Release
+							echo     !MakeMSI_Cmd!
 							echo   %Line__Separator4%
 							echo %Line__Separator1%
+						) else (
+							echo %Line__Separator3%
+							echo MSI package build success...
 						)
 						if [%NoVdProjReset%] == [%IsTrue%] (echo Skipping resetting VdProj file back) else (
 							move /Y %SetupProjectFile_VdProj% %SetupProjectFile_VdProj_Temp%
@@ -468,13 +471,15 @@ set ListOfOS=win-x64 osx-x64 linux-x64 osx-arm64
 							echo         Possible fixes:
 							echo             1. Check write permissions for path "%~dp0%PkgDir%"
 							echo             2. Try following command on the DOS prompt in folder "%~dp0":
-							echo                %VS_Devenv% %ReleaseName%.sln /build Release /project %SetupProjectFile_VdProj%  /projectconfig Release
+							echo                !MakeMSI_Cmd!
 							echo             3. Exclude building MSI [VdProj] by adding NoSetup to the command line options.
 							echo %Line__Separator1%
 							EXIT /B 0
 						)
 						call set "FileList=%%FileList%%%PkgDir%\%PkgPrefix%%%a%PkgPostfix%_Setup.msi "
 						if [%NoClean%] == [%IsTrue%] ( echo Skipping delete of %SetupProjectFile_VdProj_Temp%) else ( del /Q %SetupProjectFile_VdProj_Temp%	)
+						echo %Line__Separator3%
+						echo MSI package build and staging complete...
 					) else (
 						echo %Line__Separator1%
 						echo Error: Failed to create temporary VdProj file [%SetupProjectFile_VdProj_Temp%]
@@ -583,21 +588,8 @@ if [%NoIncUpdate%] == [%IsTrue%] (
 )
 :: ################################################################################################
 echo %Line__Separator1%
-echo Step [6]: Save incremented minor version to file %ReleaseFileVariables%
-echo %VarDescription1%>.\%ReleaseFileVariables%
-echo %ReleaseName% >>.\%ReleaseFileVariables%
-echo %VarDescription2%>>.\%ReleaseFileVariables%
-echo %MajorVersion% >>.\%ReleaseFileVariables%
-echo %VarDescription3%>>.\%ReleaseFileVariables%
-echo %MinorVersion% >>.\%ReleaseFileVariables%
-echo %VarDescription4%>>.\%ReleaseFileVariables%
-echo %DotNetVer% >>.\%ReleaseFileVariables%
-echo %VarDescription5%>>.\%ReleaseFileVariables%
-echo %ReleaseTitle%>>.\%ReleaseFileVariables%
-echo %VarDescription6%>>.\%ReleaseFileVariables%
-echo %ReleaseNotes%>>.\%ReleaseFileVariables%
-echo %VarDescription7%>>.\%ReleaseFileVariables%
-echo %ProjToChngVer%>>.\%ReleaseFileVariables%
+echo Step [6]: Save incremented minor version to file %ReleaseFileMinorVersion%
+echo %MinorVersion% >.\%ReleaseFileMinorVersion%
 :SkipIncUpdate
 
 echo %ReleaseTag% Done!
