@@ -1,5 +1,5 @@
-name: 🛗Discussion 
-description: Discussion / Request for Commentary [RFC]
+name: 🛗Discussion / Request for Commentary [RFC] 
+description: This is for issues that will be discussed and won't necessarily result directly in commits or pull requests.
 title: "🛗[RFC]: Your_Short_title"
 labels: [RFC]
 body:
