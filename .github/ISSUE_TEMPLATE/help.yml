@@ -1,0 +1,43 @@
+name: Help
+description: Post question about MediaFileDuplicateFinder
+title: "[Help]: "
+labels: [Question]
+body:
+  - type: markdown
+    attributes:
+      value: |
+       Fields marked with an asterisk (*) are required, and remaining fields are optional, but we encourage their usage.
+  - type: textarea
+    id: feature
+    attributes:
+      label: Please enter a clear and concise detailed question.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: What Operating System (OS)?
+      placeholder: e.g. Windows, MacOS, Linux
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: What version of MediaFileDuplicateFinder?
+      placeholder: e.g. 1.0, 1.1
+    validations:
+      required: true
+  - type: input
+    id: app-download
+    attributes:
+      label: Where did you download MediaFileDuplicateFinder from?
+      placeholder: e.g. github, sourceforge.net, Axter.com etc.
+    validations:
+      required: false
+  - type: textarea
+    id: snapshots
+    attributes:
+      label: Snapshot(s)
+      description: Optionally attach snapshot(s) which helps describe the question.
+    validations:
+      required: false      
