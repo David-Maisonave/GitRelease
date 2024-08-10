@@ -1,6 +1,6 @@
 name: ❓Help
 description: Post question about MediaFileDuplicateFinder
-title: "❓[Help]: "
+title: "❓[Help]: Your_Short_title"
 labels: [Question]
 body:
   - type: markdown
