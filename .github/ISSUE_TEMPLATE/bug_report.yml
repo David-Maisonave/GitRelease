@@ -2,7 +2,6 @@ name: 🐞 New Bug Report
 description: Create a bug report
 title: "🐞[EnterPluginNameHere] Your_Short_title"
 labels: [Bug]
-assignees: "David-Maisonave"
 body:
   - type: markdown
     attributes:

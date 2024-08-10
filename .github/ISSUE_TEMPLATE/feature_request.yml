@@ -1,8 +1,7 @@
 name: Feature Request
-description: Suggest an idea to improve MediaFileDuplicateFinder
-title: "[Enhancement]: "
-labels: [Enhancement, Core]
-assignees: "David-Maisonave"
+description: Suggest improve
+title: "[Enhancement]: Your_Short_title"
+labels: [Enhancement]
 body:
   - type: markdown
     attributes:
@@ -12,23 +11,9 @@ body:
   - type: textarea
     id: feature
     attributes:
-      label: A clear and concise description of the feature or enhancement you'd like to see in MediaFileDuplicateFinder
+      label: A clear and concise description of the feature or enhancement.
     validations:
       required: true
-  - type: input
-    id: os
-    attributes:
-      label: Is it OS specific?
-      placeholder: e.g. Windows, MacOS, Linux, Any
-    validations:
-      required: false
-  - type: input
-    id: app-download
-    attributes:
-      label: Where did you download MediaFileDuplicateFinder from?
-      placeholder: e.g. github, sourceforge.net, Axter.com etc.
-    validations:
-      required: false
   - type: textarea
     id: Snapshots
     attributes:
