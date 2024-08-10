@@ -1,6 +1,6 @@
 ---
 name: Discussion / Request for Commentary [RFC]
-about: Suggest an idea for this project
+about: Discussion / Request for Commentary [RFC]
 
 ---
 
