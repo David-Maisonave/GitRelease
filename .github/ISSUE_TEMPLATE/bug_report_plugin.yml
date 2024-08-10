@@ -32,7 +32,7 @@ body:
     id: install
     attributes:
       label: The pip install for the plugin
-      description: `pip install stashapp-tools --upgrade` `pip install pyYAML`
+      description: pip install stashapp-tools --upgrade,  pip install pyYAML
     validations:
       required: true      
   - type: textarea
