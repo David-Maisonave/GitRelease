@@ -1,7 +1,7 @@
-name: 🐞 Bug
-description: Create a bug report
-title: "🐞[Bug] Your_Short_title"
-labels: [Bug]
+name: 🪲 Plugin Bug
+description: Create a plugin bug report
+title: "🪲[EnterPluginNameHere] Your_Short_title"
+labels: [Plugin_Bug]
 body:
   - type: markdown
     attributes:
@@ -29,6 +29,13 @@ body:
     validations:
       required: true
   - type: textarea
+    id: install
+    attributes:
+      label: The pip install for the plugin
+      placeholder: `pip install stashapp-tools --upgrade` `pip install pyYAML`
+    validations:
+      required: true      
+  - type: textarea
     id: steps-to-reproduce
     attributes:
       label: Steps To Reproduce
@@ -46,7 +53,7 @@ body:
     id: logging
     attributes:
       label: Logging
-      description: Enter Stash logging.
+      description: Enter Stash logging and plugin logging file if applicable.
     validations:
       required: false      
   - type: textarea
