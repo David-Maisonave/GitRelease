@@ -1,7 +1,7 @@
-name: Help
-description: Post question about MediaFileDuplicateFinder
-title: "[Help]: "
-labels: [Question]
+name: 🚩Discussion 
+description: Discussion / Request for Commentary [RFC]
+title: "🚩[RFC]: "
+labels: [RFC]
 body:
   - type: markdown
     attributes:
