@@ -1,6 +1,6 @@
-name: 🚩Discussion 
+name: 🛗Discussion 
 description: Discussion / Request for Commentary [RFC]
-title: "🚩[RFC]: "
+title: "🛗[RFC]: "
 labels: [RFC]
 body:
   - type: markdown

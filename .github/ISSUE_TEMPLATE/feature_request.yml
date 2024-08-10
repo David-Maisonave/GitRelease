@@ -1,6 +1,6 @@
-name: 🎈Feature Request
+name: 🛡️Feature Request
 description: Suggest improve
-title: "🎈[Enhancement]: Your_Short_title"
+title: "🛡️[Enhancement]: Your_Short_title"
 labels: [Enhancement]
 body:
   - type: markdown
